@@ -1,0 +1,112 @@
+import pandas as pd
+import numpy as np
+import nltk
+import csv 
+import re
+import string
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize 
+from nltk.stem import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.sequence import pad_sequences
+from keras.preprocessing import sequence
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import confusion_matrix
+df = pd.read_csv('glove.6B.50d.txt', sep=" ", quoting=3, header=None, index_col=0)
+glove = {key: val.values for key, val in df.T.items()}
+import pickle
+with open('glove_50.pkl', 'wb') as fp:
+    pickle.dump(glove, fp)
+stemmer= PorterStemmer()
+lemmatizer=WordNetLemmatizer()
+max_seq_len = 1000
+glove = pickle.load(open('glove_50.pkl','rb'))
+def preprocess(text) :
+	text=text.lower()
+	#text = text.translate(string.maketrans('',''), string.punctuation)
+	text = re.sub(r'[^\w\s]','',text)
+	text = re.sub(r'[0-9]+', '', text)
+	#print(result)
+	text = text.strip()
+	stop = stopwords.words('english')
+	#stop_words = stopwords.words(‘english’)
+	from nltk.tokenize import word_tokenize
+	tokens = word_tokenize(text)
+	text = [i for i in tokens if not i in stop]
+	new_words=[]
+	
+	for word in text:
+		word=stemmer.stem(word)
+		new_words.append(word)
+
+	text=new_words
+	new_word1=[]
+	for word in text:
+		word=lemmatizer.lemmatize(word)
+		new_word1.append(word)
+	text=new_word1
+	return text
+vocab=[]
+data=[]
+with open('finaltext.csv') as myFile1:  
+	reader = csv.reader(myFile1,delimiter=',')
+	for row in reader:
+		# print("apoooo",row)
+		text=row[2]
+		t=preprocess(text)
+		# print(len(t))
+		tempv=[]
+		for word in t:
+			try:
+				tempv.extend(glove[word])
+			except:
+				tempv.extend([-1]*50)
+		data.append(tempv)
+
+
+max_review_length = 1500
+data = sequence.pad_sequences(data, maxlen=max_review_length)
+print("data ::: ",len(data))		
+label=[]
+with open('finaltext.csv') as myFile1:  
+	reader = csv.reader(myFile1,delimiter=',')
+	for row in reader:
+		# print("apoooo",row)
+		text1=row[1]
+		label.append(text1)
+print(len(label))
+# Import train_test_split function
+from sklearn.model_selection import train_test_split
+# Split dataset into training set and test set
+X_train, X_test, y_train, y_test = train_test_split(np.array(data),np.array(label), test_size=0.2) # 70% training and 30% test
+#Import svm model
+from sklearn import svm
+#Create a svm Classifier
+clf = svm.SVC(kernel='linear') # Linear Kernel
+#Train the model using the training sets
+clf.fit(X_train, y_train)
+#Predict the response for test dataset
+y_pred = clf.predict(X_test)
+#Import scikit-learn metrics module for accuracy calculation
+from sklearn import metrics
+# Model Accuracy: how often is the classifier correct?
+print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+# Model Precision: what percentage of positive tuples are labeled as such?
+print("Precision:",metrics.precision_score(y_test, y_pred, average='micro'))
+# Model Recall: what percentage of positive tuples are labelled as such?
+print("Recall:",metrics.recall_score(y_test, y_pred,average='micro'))
+# glove = pickle.load(open('glove_50.pkl','rb'))
+
+# f = open('glove.6B.100d.txt',encoding="utf8")
+# embedd_index = {}
+# for line in f:
+# 	val = line.split()
+# 	word = val[0]
+# 	coff = np.asarray(val[1:],dtype = 'float')
+# 	embedd_index[word] = coff
+
+# f.close()
+# print('Found %s word vectors.' % len(embedd_index))
+# print(embedd_index['like'])
