@@ -1,0 +1,249 @@
+import pandas as pd
+import numpy as np
+import nltk
+import math
+contractions = {"ain't": "am not / are not","aren't": "are not / am not","can't": "cannot","can't've": "cannot have","'cause": "because","could've": "could have","couldn't": "could not","couldn't've": "could not have",
+"didn't": "did not","doesn't": "does not",
+"don't": "do not",
+"hadn't": "had not",
+"hadn't've": "had not have",
+"hasn't": "has not",
+"haven't": "have not",
+"he'd": "he had / he would",
+"he'd've": "he would have",
+"he'll": "he shall / he will",
+"he'll've": "he shall have / he will have",
+"he's": "he has / he is",
+"how'd": "how did",
+"how'd'y": "how do you",
+"how'll": "how will",
+"how's": "how has / how is",
+"i'd": "I had / I would",
+"i'd've": "I would have",
+"i'll": "I shall / I will",
+"i'll've": "I shall have / I will have",
+"i'm": "I am",
+"i've": "I have",
+"isn't": "is not",
+"it'd": "it had / it would",
+"it'd've": "it would have",
+"it'll": "it shall / it will",
+"it'll've": "it shall have / it will have",
+"it's": "it has / it is",
+"let's": "let us",
+"ma'am": "madam",
+"mayn't": "may not",
+"might've": "might have",
+"mightn't": "might not",
+"mightn't've": "might not have",
+"must've": "must have",
+"mustn't": "must not",
+"mustn't've": "must not have",
+"needn't": "need not",
+"needn't've": "need not have",
+"o'clock": "of the clock",
+"oughtn't": "ought not",
+"oughtn't've": "ought not have",
+"shan't": "shall not",
+"sha'n't": "shall not",
+"shan't've": "shall not have",
+"she'd": "she had / she would",
+"she'd've": "she would have",
+"she'll": "she shall / she will",
+"she'll've": "she shall have / she will have",
+"she's": "she has / she is",
+"should've": "should have",
+"shouldn't": "should not",
+"shouldn't've": "should not have",
+"so've": "so have",
+"so's": "so as / so is",
+"that'd": "that would / that had",
+"that'd've": "that would have",
+"that's": "that has / that is",
+"there'd": "there had / there would",
+"there'd've": "there would have",
+"there's": "there has / there is",
+"they'd": "they had / they would",
+"they'd've": "they would have",
+"they'll": "they shall / they will",
+"they'll've": "they shall have / they will have",
+"they're": "they are",
+"they've": "they have",
+"to've": "to have",
+"wasn't": "was not",
+"we'd": "we had / we would",
+"we'd've": "we would have",
+"we'll": "we will",
+"we'll've": "we will have",
+"we're": "we are",
+"we've": "we have",
+"weren't": "were not",
+"what'll": "what shall / what will",
+"what'll've": "what shall have / what will have",
+"what're": "what are",
+"what's": "what has / what is",
+"what've": "what have",
+"when's": "when has / when is",
+"when've": "when have",
+"where'd": "where did",
+"where's": "where has / where is",
+"where've": "where have",
+"who'll": "who shall / who will",
+"who'll've": "who shall have / who will have",
+"who's": "who has / who is",
+"who've": "who have",
+"why's": "why has / why is",
+"why've": "why have",
+"will've": "will have",
+"won't": "will not",
+"won't've": "will not have",
+"would've": "would have",
+"wouldn't": "would not",
+"wouldn't've": "would not have",
+"y'all": "you all",
+"y'all'd": "you all would",
+"y'all'd've": "you all would have",
+"y'all're": "you all are",
+"y'all've": "you all have",
+"you'd": "you had / you would",
+"you'd've": "you would have",
+"you'll": "you shall / you will",
+"you'll've": "you shall have / you will have",
+"you're": "you are",
+"you've": "you have"
+}
+nltk.download('wordnet')
+#UserInfo.tsv
+user_info=pd.read_csv('instagram_experiment_1_annotations (1).tsv',delimiter='\t',encoding='utf-8')
+print(list(user_info.columns.values)) #file header
+print(len(user_info['postid'])) 
+import csv
+dict_={}
+with open('instagram_experiment_1_annotations (1).tsv') as myFile:  
+	reader = csv.reader(myFile,delimiter='\t')
+	for row in reader:
+		pid=row[0]
+		#print(pid)
+		if pid not in dict_:
+			dict_[pid]=[row[3]]
+			#print(dict_[pid])
+		elif pid in dict_ :
+			dict_[pid].append(row[3])
+			
+# print(dict_)
+dict1={}
+for key in dict_:
+	lst=dict_[key]
+	label=max(lst,key=lst.count)
+	dict1[key]=label
+print(dict1)
+csv_columns = ['postid','is_this_post_sarcastic']
+with open('test.csv', 'w') as f:
+    for key in dict1.keys():
+        f.write("%s,%s\n"%(key,dict1[key]))
+import re
+# with open("test.csv") as infile, open("outfile.csv", "w") as outfile:
+#     for line in infile:
+#         outfile.write(re.sub(r"\s*,\s*", " ", line))
+text={}
+with open('instagram_experiment_1_posts.tsv') as myFile1:  
+	reader = csv.reader(myFile1,delimiter='\t')
+	for rows in reader:
+		k = rows[0]
+		v = rows[2]
+		text[k] = v
+print(text)
+with open('finaltext.csv', 'w') as f:
+    for key in dict1.keys():
+        f.write("%s,%s,%s\n"%(key,dict1[key],text[key]))
+# df["low_case"]=df['OCR_extracted_text'].apply(lambda x: x.lower())
+# print(df["low_case"])
+# import pandas as pd 
+# user_info=pd.read_csv('finaltext.csv',delimiter='\t',encoding='utf-8')
+import re
+import string
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize 
+from nltk.stem import PorterStemmer
+from nltk.stem import WordNetLemmatizer
+stemmer= PorterStemmer()
+lemmatizer=WordNetLemmatizer()
+def preprocess(text) :
+	text=text.lower()
+	#text = text.translate(string.maketrans('',''), string.punctuation)
+	text = re.sub(r'[^\w\s]','',text)
+	text = re.sub(r'[0-9]+', '', text)
+	#print(result)
+	text = text.strip()
+	stop = stopwords.words('english')
+	#stop_words = stopwords.words(‘english’)
+	from nltk.tokenize import word_tokenize
+	tokens = word_tokenize(text)
+	text = [i for i in tokens if not i in stop]
+	new_words=[]
+	
+	for word in text:
+		word=stemmer.stem(word)
+		new_words.append(word)
+
+	text=new_words
+	new_word1=[]
+	for word in text:
+		word=lemmatizer.lemmatize(word)
+		new_word1.append(word)
+	text=new_word1
+	return text
+vocab=[]
+avg=[]
+d = {}
+count1=[]
+with open('finaltext.csv') as myFile1:  
+	reader = csv.reader(myFile1,delimiter=',')
+	for row in reader:
+		# print("apoooo",row)
+		text=row[2]
+		t=preprocess(text)
+		print(t)
+		for row in t:
+			average = sum(len(word) for word in t) / len(t)
+		avg.append(average)
+		for word in t:
+			vocab.append(word)
+		
+		for word in t:
+			count=0
+			if word.lower() in contractions:
+				text = text.replace(word, contractions[word.lower()])
+				count+=1
+		count1.append(count)
+print(count1)
+#print(vocab)
+#print(avg)
+for word in vocab:
+    if word not in d:
+        d[word] = 1
+    d[word] += 1
+
+new_d={}
+tot_words=len(d)
+
+for key, value in d.items():
+	avg= math.log(int(d[key])/(tot_words))
+	new_d[key]=avg
+# word_freq.sort(reverse=True)
+print(new_d)
+
+
+# from contractions import CONTRACTION_MAP
+# from textsearch import TextSearch
+# count=0
+# text="What's the best way to ensure this?"
+# for word in text.split():
+#     if word.lower() in contractions:
+#         text = text.replace(word, contractions[word.lower()])
+#         count+=1
+# print(count)
+
+
+
+
